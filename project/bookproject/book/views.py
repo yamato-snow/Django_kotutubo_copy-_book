@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect
 from django.urls import reverse, reverse_lazy
+from django.db.models import Avg
 from django.views.generic import (
     ListView,
     DetailView,
@@ -60,8 +61,14 @@ class UpdateBookView(LoginRequiredMixin, UpdateView):
         return reverse('detail-book', kwargs={'pk': self.object.id})
 
 def index_view(request):
-    object_list = Book.objects.order_by('category')
-    return render(request, 'book/index.html',{'object_list': object_list})
+    object_list = Book.objects.order_by('-id')
+    ranking_list = Book.objects.annotate(avg_rating=Avg('review__rate')).order_by('-avg_rating')
+    
+    return render(
+        request,
+        'book/index.html',
+        {'object_list': object_list, 'ranking_list': ranking_list},
+        )
 
 class CreateReviewView(LoginRequiredMixin, CreateView):
     model = Review
