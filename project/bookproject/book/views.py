@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -24,16 +25,39 @@ class CreateBookView(LoginRequiredMixin, CreateView):
     fields = ('title', 'text', 'category', 'thumbnail')
     success_url = reverse_lazy('list-book')
 
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        
+        return super().form_valid(form)
+
 class DeleteBookView(LoginRequiredMixin, DeleteView):
     template_name = 'book/book_confirm_delete.html'
     model = Book
     success_url = reverse_lazy('list-book')
 
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+
+        if obj.user != self.request.user:
+            raise PermissionDenied
+        
+        return obj
+
 class UpdateBookView(LoginRequiredMixin, UpdateView):
     model = Book
     fields = ('title', 'text', 'category', 'thumbnail')
     template_name = 'book/book_update.html'
-    success_url = reverse_lazy('list-book')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+
+        if obj.user != self.request.user:
+            raise PermissionDenied
+        
+        return obj
+    
+    def get_success_url(self):
+        return reverse('detail-book', kwargs={'pk': self.object.id})
 
 def index_view(request):
     object_list = Book.objects.order_by('category')
